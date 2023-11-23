@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="newPrefix">
+    <file>delete-2-svgrepo-com.svg</file>
+    <file>edit-content-svgrepo-com.svg</file>
+    <file>plus-large-svgrepo-com.svg</file>
+  </qresource>
+</RCC>
