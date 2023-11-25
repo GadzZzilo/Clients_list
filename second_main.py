@@ -1,11 +1,11 @@
-
+import datetime
 import sys
 
 from PySide6 import QtSql, QtWidgets
 from PySide6.QtCore import Qt, QModelIndex, QTimer, QSortFilterProxyModel
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QColor, QPainter, QPalette
 from PySide6.QtWidgets import QApplication, QMainWindow, QStyledItemDelegate, QComboBox, QStyleOptionViewItem, \
-    QItemDelegate
+    QItemDelegate, QLineEdit
 from ui_main import Ui_MainWindow
 
 import sqlite3
@@ -57,6 +57,13 @@ class ComboBoxDelegate(QStyledItemDelegate):
             super().paint(painter, option, index)
 
 
+class ColorDelegate(QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        editor.setStyleSheet('color: white;')
+        return editor
+
+
 class ClientsList(QMainWindow):
     def __init__(self):
         super(ClientsList, self).__init__()
@@ -81,13 +88,16 @@ class ClientsList(QMainWindow):
         self.ui.pushButton.clicked.connect(self.add_new_client)
         self.ui.pushButton_2.clicked.connect(self.delete_client)
 
-        # self.ui.tableView.hideColumn(0)
+        self.ui.tableView.hideColumn(0)
+        self.ui.tableView.hideColumn(5)
         # self.model.dataChanged.connect(self.update_database)
         self.model.dataChanged.connect(self.update_table_and_database)
         self.model.rowsInserted.connect(self.add_new_client_db)
 
-        delegate = ComboBoxDelegate(["Нет лр", "Исполняется", "Выполнено"], self.ui.tableView)
-        self.ui.tableView.setItemDelegateForColumn(1, delegate)
+        delegate_combobox = ComboBoxDelegate(["Нет лр", "Исполняется", "Выполнено"], self.ui.tableView)
+        delegate_lineedit = ColorDelegate(self.ui.tableView)
+        self.ui.tableView.setItemDelegateForColumn(1, delegate_combobox)
+        self.ui.tableView.setItemDelegate(delegate_lineedit)
 
     #############3
         
@@ -104,12 +114,12 @@ class ClientsList(QMainWindow):
 
         query = QtSql.QSqlQuery()
         query.exec("CREATE TABLE IF NOT EXISTS clients (id integer primary key AUTOINCREMENT, Готовность VARCHAR(40), "
-                   "Имя VARCHAR(60), Приведенные VARCHAR(100), Комментарий VARCHAR(160))")
+                   "Имя VARCHAR(60), Приведенные VARCHAR(100), Комментарий VARCHAR(160), Время_начала DATETIME)")
         return True
     def view_data(self):
         # self.model.clear()
-        self.model.setHorizontalHeaderLabels(["id", "Готовность", "Имя", "Приведенные", "Комментарий"])
-        self.cursor.execute('SELECT * FROM clients ORDER BY Готовность')
+        self.model.setHorizontalHeaderLabels(["id", "Готовность", "Имя", "Приведенные", "Комментарий", "Время_начала"])
+        self.cursor.execute('SELECT * FROM clients ORDER BY Готовность, Время_начала')
         self.data = self.cursor.fetchall()
 
         for i_row, row_item in enumerate(self.data):
@@ -132,7 +142,7 @@ class ClientsList(QMainWindow):
         self.sort_table()
 
     def sort_table(self):
-        # self.model.sort(5, Qt.AscendingOrder)  # Сортировка по столбцу "id_1"
+        self.model.sort(5, Qt.AscendingOrder)  # Сортировка по столбцу "Время_начала"
         print("sort1")
         self.model.sort(1, Qt.AscendingOrder)  # Сортировка по столбцу "Готовность"
         print("sort2")
@@ -149,10 +159,17 @@ class ClientsList(QMainWindow):
         id_value = self.model.data(id_index)
         column_name = self.model.horizontalHeaderItem(col).text()
 
-        self.cursor.execute(f'UPDATE clients SET {column_name} = ? WHERE id = ?', (new_value, id_value))
+        if col == 1 and new_value == "Исполняется":
+            date = datetime.datetime.now()
+            print(date)
+            self.cursor.execute(
+                f'UPDATE clients SET {column_name} = ?, Время_начала = ? WHERE id = ?',
+                (new_value, date, id_value)
+            )
+        else:
+            self.cursor.execute(f'UPDATE clients SET {column_name} = ? WHERE id = ?', (new_value, id_value))
+
         self.connection.commit()
-        # self.view_data()
-        print("update")
 
     def add_new_client_db(self):
         self.cursor.execute("INSERT INTO clients (Готовность, Имя, Приведенные, Комментарий) VALUES ('', '', '', '')")
