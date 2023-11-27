@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-
-################################################################################
-## Form generated from reading UI file 'main.ui'
-##
-## Created by: Qt User Interface Compiler version 6.5.2
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
-
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
@@ -89,34 +79,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addWidget(self.pushButton_2)
 
-#         self.pushButton_3 = QPushButton(self.centralwidget)
-#         self.pushButton_3.setObjectName(u"pushButton_3")
-#         self.pushButton_3.setStyleSheet(u"QPushButton {\n"
-# "color: white;\n"
-# "background-color: rgba(255, 255, 255, 30);\n"
-# "border: 1px solid rgba(255, 255, 255, 40);\n"
-# "border-radius: 7px;\n"
-# "width: 240px;\n"
-# "height: 50px;\n"
-# "font-size: 14pt;\n"
-# "}\n"
-# "\n"
-# "QPushButton:hover {\n"
-# "background-color: rgba(255, 255, 255, 40);\n"
-# "}\n"
-# "QPushButton:pressed {\n"
-# "background-color: rgba(255, 255, 255, 60);\n"
-# "\n"
-# "}\n"
-# "")
-#         icon2 = QIcon()
-#         icon2.addFile(u":/newPrefix/edit-content-svgrepo-com.svg", QSize(), QIcon.Normal, QIcon.Off)
-        # self.pushButton_3.setIcon(icon2)
-        # self.pushButton_3.setIconSize(QSize(30, 30))
-
-        # self.horizontalLayout.addWidget(self.pushButton_3)
-
-
         self.verticalLayout.addLayout(self.horizontalLayout)
 
         self.horizontalLayout_2 = QHBoxLayout(self.centralwidget)
@@ -183,9 +145,6 @@ class Ui_MainWindow(object):
         self.tableView.verticalHeader().hide()
         self.tableView.horizontalHeader().setDefaultSectionSize(135)
         self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        # self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        # Разрешаем растягивать последний столбец для заполнения доступного пространства
-        # self.tableView.horizontalHeader().setStretchLastSection(True)
 
         self.horizontalLayout_2.addWidget(self.tableView)
         self.verticalLayout.addLayout(self.horizontalLayout_2)
@@ -195,7 +154,6 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
 
         QMetaObject.connectSlotsByName(MainWindow)
-    # setupUi
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"\u041a\u0443\u0440\u0441\u043e\u0432\u044b\u0435", None))

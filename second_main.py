@@ -2,66 +2,31 @@ import datetime
 import sys
 
 from PySide6 import QtSql, QtWidgets
-from PySide6.QtCore import Qt, QModelIndex, QTimer, QSortFilterProxyModel
-from PySide6.QtGui import QStandardItemModel, QStandardItem, QColor, QPainter, QPalette
-from PySide6.QtWidgets import QApplication, QMainWindow, QStyledItemDelegate, QComboBox, QStyleOptionViewItem, \
-    QItemDelegate, QLineEdit
+from PySide6.QtCore import Qt, QStringListModel, QSortFilterProxyModel
+from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QLineEdit, QListView
+
+from delegats import ComboBoxDelegate, ColorDelegate
+from ui_add_client_window import Ui_Dialog
 from ui_main import Ui_MainWindow
 
 import sqlite3
 
 
-class ComboBoxDelegate(QStyledItemDelegate):
-    def __init__(self, choices, parent=None):
-        super().__init__()
-        self.choices = choices
+class NameFilterModel(QSortFilterProxyModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.filter_string = ""
 
-    def createEditor(self, parent, option, index):
-        editor = QComboBox(parent)
-        editor.addItems(self.choices)
-        return editor
+    def setFilterString(self, text):
+        self.filter_string = text
+        self.invalidateFilter()
 
-    def setEditorData(self, editor, index):
-        value = str(index.model().data(index, Qt.EditRole))
-        editor.setCurrentText(value)
-
-    def setModelData(self, editor, model, index):
-        model.setData(index, editor.currentText(), Qt.EditRole)
-
-    #################################################################
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
-        if index.column() == 1 and index.data() == "Выполнено":
-            painter.save()
-
-            # Устанавливаем цвет фона ячейки
-            painter.fillRect(option.rect, QColor(0, 200, 0, 200))
-
-            # Отображаем текст ячейки
-            option.palette.setColor(QPalette.Text, Qt.white)
-            # self.drawDisplay(painter, option, option.rect, index.data())
-
-            painter.restore()
-        elif index.column() == 1 and index.data() == "Исполняется":
-            painter.save()
-
-            # Устанавливаем цвет фона ячейки
-            painter.fillRect(option.rect, QColor(200, 200, 0, 200))
-
-            # Отображаем текст ячейки
-            option.palette.setColor(QPalette.Text, Qt.white)
-            # self.drawDisplay(painter, option, option.rect, index.data())
-
-            painter.restore()
-        else:
-            # Если условие не выполняется, отображаем ячейку по умолчанию
-            super().paint(painter, option, index)
-
-
-class ColorDelegate(QStyledItemDelegate):
-    def createEditor(self, parent, option, index):
-        editor = QLineEdit(parent)
-        editor.setStyleSheet('color: white;')
-        return editor
+    def filterAcceptsRow(self, source_row, source_parent):
+        if not self.filter_string:
+            return True
+        name = self.sourceModel().data(self.sourceModel().index(source_row), Qt.DisplayRole)
+        return name.startswith(self.filter_string)
 
 
 class ClientsList(QMainWindow):
@@ -69,28 +34,21 @@ class ClientsList(QMainWindow):
         super(ClientsList, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        ######################
         self.create_connection()
-        ###################
 
         self.connection = sqlite3.connect('clients_db.db')
         self.cursor = self.connection.cursor()
 
-        # self.cursor.execute('SELECT * FROM clients ORDER BY Готовность, id')
-        # self.data = self.cursor.fetchall()
-
-        ################
         self.model = QStandardItemModel()
         self.ui.tableView.setModel(self.model)
-        #####################
         self.view_data()
 
-        self.ui.pushButton.clicked.connect(self.add_new_client)
+        self.ui.pushButton.clicked.connect(self.open_new_window)
         self.ui.pushButton_2.clicked.connect(self.delete_client)
 
-        self.ui.tableView.hideColumn(0)
-        self.ui.tableView.hideColumn(5)
-        # self.model.dataChanged.connect(self.update_database)
+        # self.ui.tableView.hideColumn(0)
+        # self.ui.tableView.hideColumn(5)
+
         self.model.dataChanged.connect(self.update_table_and_database)
         self.model.rowsInserted.connect(self.add_new_client_db)
 
@@ -99,9 +57,28 @@ class ClientsList(QMainWindow):
         self.ui.tableView.setItemDelegateForColumn(1, delegate_combobox)
         self.ui.tableView.setItemDelegate(delegate_lineedit)
 
-    #############3
-        
-    ##########33##
+    def open_new_window(self):
+        self.new_window = QtWidgets.QDialog()
+        self.ui_window = Ui_Dialog()
+        self.ui_window.setupUi(self.new_window)
+
+        self.cursor.execute('SELECT Имя FROM clients ORDER BY Имя')
+        names = [name[0] for name in self.cursor.fetchall()]
+
+        filter_model = NameFilterModel()
+        filter_model.setSourceModel(QStringListModel(names))
+
+        search_line = self.ui_window.search_line
+        search_line.textChanged.connect(filter_model.setFilterString)
+
+        list_view = self.ui_window.listView
+        list_view.setModel(filter_model)
+        list_view.setEditTriggers(QListView.NoEditTriggers)
+        list_view.clicked.connect(lambda index: search_line.setText(index.data()))
+
+        self.new_window.show()
+
+        self.ui_window.pushButton.clicked.connect(self.add_new_client)
 
     def create_connection(self):
         db = QtSql.QSqlDatabase.addDatabase('QSQLITE')
@@ -114,13 +91,16 @@ class ClientsList(QMainWindow):
 
         query = QtSql.QSqlQuery()
         query.exec("CREATE TABLE IF NOT EXISTS clients (id integer primary key AUTOINCREMENT, Готовность VARCHAR(40), "
-                   "Имя VARCHAR(60), Приведенные VARCHAR(100), Комментарий VARCHAR(160), Время_начала DATETIME)")
+                   "Имя VARCHAR(60), Приведенные VARCHAR(100), Пригласитель VARCHAR(100), Комментарий VARCHAR(160), Время_начала DATETIME)")
         return True
-    def view_data(self):
-        # self.model.clear()
-        self.model.setHorizontalHeaderLabels(["id", "Готовность", "Имя", "Приведенные", "Комментарий", "Время_начала"])
+
+    def get_data(self):
         self.cursor.execute('SELECT * FROM clients ORDER BY Готовность, Время_начала')
         self.data = self.cursor.fetchall()
+
+    def view_data(self):
+        self.model.setHorizontalHeaderLabels(["id", "Готовность", "Имя", "Приведенные", "Пригласитель", "Комментарий", "Время_начала"])
+        self.get_data()
 
         for i_row, row_item in enumerate(self.data):
             for i_col, col_item in enumerate(row_item):
@@ -131,26 +111,40 @@ class ClientsList(QMainWindow):
                 else:
                     cell = QStandardItem(str(col_item))
                     self.model.setItem(i_row, i_col, cell)
-        #######################3
-
-        ##########################
-
-        print("view_data")
 
     def update_table_and_database(self, top_left_index, bottom_right_index):
         self.update_database(bottom_right_index)  # Обновление базы данных
         self.sort_table()
 
     def sort_table(self):
-        self.model.sort(5, Qt.AscendingOrder)  # Сортировка по столбцу "Время_начала"
-        print("sort1")
+        self.model.sort(6, Qt.AscendingOrder)  # Сортировка по столбцу "Время_начала"
         self.model.sort(1, Qt.AscendingOrder)  # Сортировка по столбцу "Готовность"
-        print("sort2")
 
     def add_new_client(self):
-        rowPosition = self.model.rowCount()
-        self.model.insertRow(rowPosition)
+        name = self.ui_window.lineEdit.text()
+        status = "Нет лр"
+        comment = self.ui_window.textEdit.toPlainText()
+        inviter = self.ui_window.search_line.text()
+        row_position = self.model.rowCount()
 
+        if inviter != "":
+            for i_row, row_item in enumerate(self.data):
+                if inviter == row_item[2]:
+                    old_cell = self.model.item(i_row, 3)
+                    new_cell = QStandardItem()
+                    new_cell.setData(f"{old_cell.text()}, {name}" if old_cell is not None else str(name), Qt.DisplayRole)
+                    self.model.setItem(i_row, 3, new_cell)
+                    break
+
+        self.model.insertRow(row_position)
+
+        for item, col in zip([status, name, comment, inviter], [1, 2, 5, 4]):
+            cell = QStandardItem(str(item))
+            self.model.setItem(row_position, col, cell)
+
+        self.new_window.close()
+        self.get_data()
+        
     def update_database(self, index):
         row = index.row()
         col = index.column()
@@ -161,7 +155,6 @@ class ClientsList(QMainWindow):
 
         if col == 1 and new_value == "Исполняется":
             date = datetime.datetime.now()
-            print(date)
             self.cursor.execute(
                 f'UPDATE clients SET {column_name} = ?, Время_начала = ? WHERE id = ?',
                 (new_value, date, id_value)
@@ -179,16 +172,15 @@ class ClientsList(QMainWindow):
         row_count = self.cursor.fetchone()[0]
         row_index = row_count - 1
 
-        self.cursor.execute('SELECT * FROM clients ORDER BY Готовность')
-        self.data = self.cursor.fetchall()
-        item = max([self.data[i][0] for i in range(len(self.data))]) if len(self.data) != 1 else 1
-        cell = QStandardItem(str(item))
+        self.get_data()
+        item = self.cursor.execute('SELECT MAX(id) FROM clients')
+        result = self.cursor.fetchone()[0] if item is not None else 1
+        cell = QStandardItem(str(result))
         self.model.setItem(row_index, 0, cell)
-        # self.view_data()
-        print("add")
 
     def delete_client(self):
         selected_index = self.ui.tableView.currentIndex()
+
         if not selected_index.isValid():
             return None
 
@@ -198,9 +190,7 @@ class ClientsList(QMainWindow):
 
         self.cursor.execute("DELETE FROM clients WHERE ID=?", (id_value,))
         self.connection.commit()
-        self.cursor.execute('SELECT * FROM clients ORDER BY Готовность')
-        self.data = self.cursor.fetchall()
-        print("del")
+        self.get_data()
 
 
 if __name__ == "__main__":
