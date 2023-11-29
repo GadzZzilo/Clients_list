@@ -7,7 +7,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QHeaderView, QMainWindow,
                                QPushButton, QSizePolicy, QTableView, QVBoxLayout,
-                               QWidget, QTableWidgetItem, QComboBox)
+                               QWidget, QTableWidgetItem, QComboBox, QLineEdit)
 import icons
 
 
@@ -81,6 +81,25 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addLayout(self.horizontalLayout)
 
+        #####
+        self.lineEdit = QLineEdit(self.centralwidget)
+        self.lineEdit.setObjectName("lineEdit")
+        self.lineEdit.setStyleSheet("QLineEdit {"
+                                    "color: white;"
+                                    "background-color: rgba(255, 255, 255, 30);"
+                                    "border: 1px solid rgba(255, 255, 255, 40);"
+                                    "border-radius: 7px;"
+                                    "width: 240px;"
+                                    "height: 50px;"
+                                    "font-size: 14pt;"
+                                    "padding-left: 10px;"
+                                    "}")
+
+        self.lineEdit.setPlaceholderText("Поиск")
+        self.horizontalLayout.addWidget(self.lineEdit)
+
+        self.verticalLayout.addLayout(self.horizontalLayout)
+#############################3
         self.horizontalLayout_2 = QHBoxLayout(self.centralwidget)
         self.horizontalLayout.setObjectName(u"horizontalLayout_2")
         self.tableView = QTableView(self.centralwidget)

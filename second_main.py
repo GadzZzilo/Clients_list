@@ -2,7 +2,7 @@ import datetime
 import sys
 
 from PySide6 import QtSql, QtWidgets
-from PySide6.QtCore import Qt, QStringListModel, QSortFilterProxyModel
+from PySide6.QtCore import Qt, QStringListModel, QSortFilterProxyModel, QDateTime
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QLineEdit, QListView
 
@@ -41,13 +41,18 @@ class ClientsList(QMainWindow):
 
         self.model = QStandardItemModel()
         self.ui.tableView.setModel(self.model)
+
+        self.ui.lineEdit.textChanged.connect(self.highlight_rows)
+        #######################
+
+        ##########
         self.view_data()
 
         self.ui.pushButton.clicked.connect(self.open_new_window)
         self.ui.pushButton_2.clicked.connect(self.delete_client)
 
-        # self.ui.tableView.hideColumn(0)
-        # self.ui.tableView.hideColumn(5)
+        self.ui.tableView.hideColumn(0)
+        self.ui.tableView.hideColumn(6)
 
         self.model.dataChanged.connect(self.update_table_and_database)
         self.model.rowsInserted.connect(self.add_new_client_db)
@@ -56,6 +61,28 @@ class ClientsList(QMainWindow):
         delegate_lineedit = ColorDelegate(self.ui.tableView)
         self.ui.tableView.setItemDelegateForColumn(1, delegate_combobox)
         self.ui.tableView.setItemDelegate(delegate_lineedit)
+        self.sort_table()
+
+    def highlight_rows(self):
+        search_text = self.ui.lineEdit.text()
+
+        # Очищение выделения всех строк
+        for row in range(self.model.rowCount()):
+            self.ui.tableView.setRowHidden(row, False)
+
+        # Поиск и подсветка строк, удовлетворяющих критерию поиска
+        if search_text:
+            for row in range(self.model.rowCount()):
+                for column in range(self.model.columnCount()):
+                    item = self.model.item(row, column)
+                    if item is None:
+                        continue
+
+                    if search_text.lower() in item.text().lower():
+                        self.ui.tableView.setRowHidden(row, False)
+                        break
+                    else:
+                        self.ui.tableView.setRowHidden(row, True)
 
     def open_new_window(self):
         self.new_window = QtWidgets.QDialog()
@@ -107,10 +134,9 @@ class ClientsList(QMainWindow):
                 if i_col == 0:
                     cell = QStandardItem()
                     cell.setData(col_item, Qt.DisplayRole)
-                    self.model.setItem(i_row, i_col, cell)
                 else:
                     cell = QStandardItem(str(col_item))
-                    self.model.setItem(i_row, i_col, cell)
+                self.model.setItem(i_row, i_col, cell)
 
     def update_table_and_database(self, top_left_index, bottom_right_index):
         self.update_database(bottom_right_index)  # Обновление базы данных
@@ -126,19 +152,20 @@ class ClientsList(QMainWindow):
         comment = self.ui_window.textEdit.toPlainText()
         inviter = self.ui_window.search_line.text()
         row_position = self.model.rowCount()
+        date = datetime.datetime.now()
 
         if inviter != "":
             for i_row, row_item in enumerate(self.data):
                 if inviter == row_item[2]:
                     old_cell = self.model.item(i_row, 3)
                     new_cell = QStandardItem()
-                    new_cell.setData(f"{old_cell.text()}, {name}" if old_cell is not None else str(name), Qt.DisplayRole)
+                    new_cell.setData(f"{old_cell.text()}, {name}" if old_cell is not None and old_cell.text() != "" else str(name), Qt.DisplayRole)
                     self.model.setItem(i_row, 3, new_cell)
                     break
 
         self.model.insertRow(row_position)
 
-        for item, col in zip([status, name, comment, inviter], [1, 2, 5, 4]):
+        for item, col in zip([status, name, comment, inviter, date], [1, 2, 5, 4, 6]):
             cell = QStandardItem(str(item))
             self.model.setItem(row_position, col, cell)
 
@@ -159,6 +186,8 @@ class ClientsList(QMainWindow):
                 f'UPDATE clients SET {column_name} = ?, Время_начала = ? WHERE id = ?',
                 (new_value, date, id_value)
             )
+            cell = QStandardItem(str(date))
+            self.model.setItem(row, 6, cell)
         else:
             self.cursor.execute(f'UPDATE clients SET {column_name} = ? WHERE id = ?', (new_value, id_value))
 
@@ -186,6 +215,19 @@ class ClientsList(QMainWindow):
 
         row = selected_index.row()
         id_value = self.data[row][0]
+
+        inviter = self.model.item(row, 4).text()
+        name = self.model.item(row, 2).text()
+        if inviter != "":
+            for i_row, row_item in enumerate(self.data):
+                if row_item[2] == inviter:
+                    invited_list = row_item[3].split(", ")
+                    invited_list.remove(name)
+                    invited_str = ", ".join(invited_list) #Создание строки с удаленным приглашенным
+                    cell = QStandardItem(invited_str)
+                    self.model.setItem(i_row, 3, cell)
+                    break
+
         self.model.removeRow(row)
 
         self.cursor.execute("DELETE FROM clients WHERE ID=?", (id_value,))

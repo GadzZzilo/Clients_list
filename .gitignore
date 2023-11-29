@@ -4,3 +4,4 @@ build
 dist
 venv
 clients_db.db
+sayman.ico
